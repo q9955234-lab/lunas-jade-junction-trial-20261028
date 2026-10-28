@@ -2437,6 +2437,7 @@ System.register("chunks:///_virtual/JadeGame.ts", ['./rollupPluginModLoBabelHelp
           _this.adMessage = '';
           _this.adReturn = 'home';
           _this.loadingLastMs = 0;
+          _this.pendingAdProp = null;
           _this.adEpoch = 0;
           _this.loadEpoch = 0;
           _this.backgroundPaused = false;
@@ -2499,7 +2500,7 @@ System.register("chunks:///_virtual/JadeGame.ts", ['./rollupPluginModLoBabelHelp
         _proto.onHide = function onHide() {
           var _this$model2;
           this.backgroundPaused = true;
-          this.loadingLastMs = Date.now();
+          if (this.loadingLastMs > 0) this.loadingLastMs = Date.now();
           this.cancelPointer();
           (_this$model2 = this.model) == null || _this$model2.abandonSearch();
           this.hintCheckEpoch++;
@@ -2509,12 +2510,12 @@ System.register("chunks:///_virtual/JadeGame.ts", ['./rollupPluginModLoBabelHelp
         };
         _proto.onShow = function onShow() {
           this.backgroundPaused = false;
-          this.loadingLastMs = Date.now();
+          if (this.loadingLastMs > 0) this.loadingLastMs = Date.now();
           if (this.page === 'prop' && this.selectedProp === 'hint') this.show('prop');
         };
         _proto.update = function update(dt) {
           var _this$guide, _this$save, _this$giftNode, _this$cooldownLabel;
-          if (this.page === 'loading' && !this.backgroundPaused) {
+          if (this.page === 'loading' && this.loadingLastMs > 0 && !this.backgroundPaused) {
             var progress = globalThis.__LJJNativeLoadProgress;
             if (typeof progress === 'number' && Number.isFinite(progress)) this.loadingLastMs = Math.max(this.loadingLastMs, progress);
             if (Date.now() - this.loadingLastMs >= (sys.isBrowser ? 180000 : 10000)) {
@@ -2687,6 +2688,7 @@ System.register("chunks:///_virtual/JadeGame.ts", ['./rollupPluginModLoBabelHelp
           if (message === void 0) {
             message = 'Game data could not load. Please retry.';
           }
+          this.loadingLastMs = 0;
           this.reset(false);
           this.text('Could not start', 360, 420, 600, 100, 42);
           this.text(message + '\nYour saved progress is kept.', 360, 570, 580, 160, 28);
@@ -2825,7 +2827,9 @@ System.register("chunks:///_virtual/JadeGame.ts", ['./rollupPluginModLoBabelHelp
             g.fillColor = Color.fromHEX(new Color(), '#dbebd8');
             g.roundRect(-w / 2, -h / 2, w, h, 22);
             g.fill();
-            this.text(key, x, y, w - 16, h - 8, 27);
+            var label = this.text(key, x, y, w - 16, h - 8, 27);
+            label.node.setParent(n);
+            label.node.setPosition(0, 0, 0);
           }
           if (!enabled && visual) visual.getComponent(Sprite).color = new Color(185, 195, 190, 255);
           var b = n.addComponent(Button);
@@ -3861,21 +3865,22 @@ System.register("chunks:///_virtual/JadeGame.ts", ['./rollupPluginModLoBabelHelp
                   return _context6.abrupt("return");
                 case 17:
                   if (!(outcome === 'completed')) {
-                    _context6.next = 33;
+                    _context6.next = 34;
                     break;
                   }
                   ok = false;
                   if (t === 'double' && id) ok = this.model.doubleResult(id);else if (t === 'gift') ok = this.model.claimGift(true);else if (t === 'revive' && id) ok = this.model.revive(id);else if (id) ok = this.model.grantPropAd(t, id);
                   if (!this.model.pending) {
-                    _context6.next = 24;
+                    _context6.next = 25;
                     break;
                   }
+                  this.pendingAdProp = ['hint', 'undo', 'shuffle'].includes(t) ? t : null;
                   this.modalFrom = this.adReturn;
                   this.show('save');
                   return _context6.abrupt("return");
-                case 24:
+                case 25:
                   if (!ok) {
-                    _context6.next = 30;
+                    _context6.next = 31;
                     break;
                   }
                   this.audio.playSFX('sfx_reward');
@@ -3883,15 +3888,15 @@ System.register("chunks:///_virtual/JadeGame.ts", ['./rollupPluginModLoBabelHelp
                   this.show(t === 'revive' ? 'game' : this.adReturn);
                   if (['hint', 'undo', 'shuffle'].includes(t)) this.useProp(t, true);
                   return _context6.abrupt("return");
-                case 30:
+                case 31:
                   this.adMessage = 'That reward is already collected.';
-                  _context6.next = 34;
+                  _context6.next = 35;
                   break;
-                case 33:
-                  this.adMessage = outcome === 'unavailable' ? 'No video is available right now.\nYou can keep playing for free.' : outcome === 'cancelled' ? 'Video closed. No extra reward was added.' : outcome === 'timeout' ? 'The video took too long. Please retry.' : 'The video could not play. Please retry.';
                 case 34:
-                  this.show('ad');
+                  this.adMessage = outcome === 'unavailable' ? 'No video is available right now.\nYou can keep playing for free.' : outcome === 'cancelled' ? 'Video closed. No extra reward was added.' : outcome === 'timeout' ? 'The video took too long. Please retry.' : 'The video could not play. Please retry.';
                 case 35:
+                  this.show('ad');
+                case 36:
                 case "end":
                   return _context6.stop();
               }
@@ -3909,7 +3914,10 @@ System.register("chunks:///_virtual/JadeGame.ts", ['./rollupPluginModLoBabelHelp
           this.button('SAVE', 360, 860, 330, 115, function () {
             if (_this24.model.retrySave()) {
               _this24.audio.playSFX('sfx_reward');
+              var prop = _this24.pendingAdProp;
+              _this24.pendingAdProp = null;
               if (['game', 'won', 'failed'].includes(_this24.modalFrom)) _this24.routeRun();else _this24.show(_this24.modalFrom);
+              if (prop && _this24.page === 'game') _this24.useProp(prop, true);
             }
           }, true, 'Retry saving');
         };
