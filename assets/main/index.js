@@ -2342,7 +2342,7 @@ System.register("chunks:///_virtual/GameRules.ts", ['./rollupPluginModLoBabelHel
 });
 
 System.register("chunks:///_virtual/JadeGame.ts", ['./rollupPluginModLoBabelHelpers.js', 'cc', './GameRules.ts', './GameDomain.ts', './Platform.ts', './GameArt.ts', './GameAudioManager.ts', './Tutorial.ts', './GameplayFeedback.ts'], function (exports) {
-  var _inheritsLoose, _createForOfIteratorHelperLoose, _createClass, _asyncToGenerator, _regeneratorRuntime, cclegacy, _decorator, profiler, view, ResolutionPolicy, Node, Layers, UITransform, Canvas, Camera, Color, game, Game, UIOpacity, Sprite, Graphics, Label, Button, Vec3, Component, resources, JsonAsset, sys, Font, status, activeSuit, stateKey, runGap, gestureAction, copy, DELTA, GameDomain, supports, sdkFor, storagePort, RewardedAds, GameArt, GameAudioManager, guideCells, openingFeedback, gateCaption, failureFeedback, INK_HELP, rejectedSlide, moveFeedback;
+  var _inheritsLoose, _createForOfIteratorHelperLoose, _createClass, _asyncToGenerator, _regeneratorRuntime, cclegacy, _decorator, profiler, view, ResolutionPolicy, Node, Layers, UITransform, Canvas, Camera, Color, game, Game, sys, UIOpacity, Sprite, Graphics, Label, Button, Vec3, Component, resources, JsonAsset, Font, status, activeSuit, stateKey, runGap, gestureAction, copy, DELTA, GameDomain, supports, sdkFor, storagePort, RewardedAds, GameArt, GameAudioManager, guideCells, openingFeedback, gateCaption, failureFeedback, INK_HELP, rejectedSlide, moveFeedback;
   return {
     setters: [function (module) {
       _inheritsLoose = module.inheritsLoose;
@@ -2364,6 +2364,7 @@ System.register("chunks:///_virtual/JadeGame.ts", ['./rollupPluginModLoBabelHelp
       Color = module.Color;
       game = module.game;
       Game = module.Game;
+      sys = module.sys;
       UIOpacity = module.UIOpacity;
       Sprite = module.Sprite;
       Graphics = module.Graphics;
@@ -2373,7 +2374,6 @@ System.register("chunks:///_virtual/JadeGame.ts", ['./rollupPluginModLoBabelHelp
       Component = module.Component;
       resources = module.resources;
       JsonAsset = module.JsonAsset;
-      sys = module.sys;
       Font = module.Font;
     }, function (module) {
       status = module.status;
@@ -2436,6 +2436,7 @@ System.register("chunks:///_virtual/JadeGame.ts", ['./rollupPluginModLoBabelHelp
           _this.adTarget = 'double';
           _this.adMessage = '';
           _this.adReturn = 'home';
+          _this.loadingLastMs = 0;
           _this.adEpoch = 0;
           _this.loadEpoch = 0;
           _this.backgroundPaused = false;
@@ -2498,6 +2499,7 @@ System.register("chunks:///_virtual/JadeGame.ts", ['./rollupPluginModLoBabelHelp
         _proto.onHide = function onHide() {
           var _this$model2;
           this.backgroundPaused = true;
+          this.loadingLastMs = Date.now();
           this.cancelPointer();
           (_this$model2 = this.model) == null || _this$model2.abandonSearch();
           this.hintCheckEpoch++;
@@ -2507,10 +2509,19 @@ System.register("chunks:///_virtual/JadeGame.ts", ['./rollupPluginModLoBabelHelp
         };
         _proto.onShow = function onShow() {
           this.backgroundPaused = false;
+          this.loadingLastMs = Date.now();
           if (this.page === 'prop' && this.selectedProp === 'hint') this.show('prop');
         };
         _proto.update = function update(dt) {
           var _this$guide, _this$save, _this$giftNode, _this$cooldownLabel;
+          if (this.page === 'loading' && !this.backgroundPaused) {
+            var progress = globalThis.__LJJNativeLoadProgress;
+            if (typeof progress === 'number' && Number.isFinite(progress)) this.loadingLastMs = Math.max(this.loadingLastMs, progress);
+            if (Date.now() - this.loadingLastMs >= (sys.isBrowser ? 180000 : 10000)) {
+              this.loadEpoch++;
+              this.loadingFailure();
+            }
+          }
           this.idleTime += Math.min(dt, .1);
           if ((_this$guide = this.guide) != null && _this$guide.root.isValid && this.page === 'game' && !this.backgroundPaused && !this.pointer) {
             var _g$hand;
@@ -2573,20 +2584,15 @@ System.register("chunks:///_virtual/JadeGame.ts", ['./rollupPluginModLoBabelHelp
         _proto.load = /*#__PURE__*/function () {
           var _load = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee2() {
             var _this2 = this;
-            var epoch, timer, _this$model$run, _yield$Promise$all, data, table, order, plan, platform, _loop, _iterator, _step;
+            var epoch, _this$model$run, _yield$Promise$all, data, table, order, plan, platform, _loop, _iterator, _step;
             return _regeneratorRuntime().wrap(function _callee2$(_context3) {
               while (1) switch (_context3.prev = _context3.next) {
                 case 0:
                   epoch = ++this.loadEpoch;
+                  this.loadingLastMs = Date.now();
                   this.page = 'loading';
                   this.reset(false);
                   this.text('Loading…', 360, 570, 600, 100, 38);
-                  timer = setTimeout(function () {
-                    if (epoch === _this2.loadEpoch) {
-                      _this2.loadEpoch++;
-                      _this2.loadingFailure();
-                    }
-                  }, 20000);
                   _context3.prev = 5;
                   _context3.next = 8;
                   return Promise.all(['game_levels', 'unlock_table', 'shuffle_order', 'level_plan', 'platform'].map(function (k) {
@@ -2666,14 +2672,10 @@ System.register("chunks:///_virtual/JadeGame.ts", ['./rollupPluginModLoBabelHelp
                   _context3.t1 = _context3["catch"](5);
                   if (epoch === this.loadEpoch) this.loadingFailure();
                 case 41:
-                  _context3.prev = 41;
-                  clearTimeout(timer);
-                  return _context3.finish(41);
-                case 44:
                 case "end":
                   return _context3.stop();
               }
-            }, _callee2, this, [[5, 38, 41, 44]]);
+            }, _callee2, this, [[5, 38]]);
           }));
           function load() {
             return _load.apply(this, arguments);
